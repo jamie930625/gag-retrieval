@@ -1,0 +1,15 @@
+# secrets & generated
+gag_retrieval/gemini.key
+gag_retrieval/out/
+__pycache__/
+*.pyc
+
+# per-song audio calibration (local)
+lrc_test/offsets.json
+
+# audio files (copyright + size) — add your own locally
+*.mp3
+*.m4a
+*.wav
+*.flac
+*.ogg
