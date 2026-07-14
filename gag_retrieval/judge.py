@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import urllib.error
 import urllib.request
 
 from .hooks import theme_profile
@@ -172,15 +174,46 @@ def _extract_json(text: str) -> dict | None:
     return None
 
 
-def call_gemini(prompt: str) -> str:
-    key = os.environ.get("GEMINI_API_KEY", "")
-    if not key:
-        raise RuntimeError("GEMINI_API_KEY not set")
-    model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+# Transient server-side statuses worth retrying (overload / rate / gateway).
+_RETRY_STATUS = {429, 500, 502, 503, 504}
+
+
+def _gemini_once(prompt: str, model: str, key: str) -> str:
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
            f"{model}:generateContent?key={key}")
     data = _http_json(url, {"contents": [{"parts": [{"text": prompt}]}]}, {})
     return data["candidates"][0]["content"]["parts"][0]["text"]
+
+
+def call_gemini(prompt: str, *, retries: int = 4, base_delay: float = 1.5) -> str:
+    """Gemini call with exponential backoff on transient overload (503/429/…)
+    and a lighter-model fallback, so a busy free tier doesn't kill the request."""
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY not set")
+    primary = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+    fallback = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-flash-lite-latest")
+    models = [primary] + ([fallback] if fallback and fallback != primary else [])
+    last_err: Exception | None = None
+    for model in models:
+        for attempt in range(retries):
+            try:
+                return _gemini_once(prompt, model, key)
+            except urllib.error.HTTPError as e:
+                last_err = e
+                if e.code in (400, 401, 403):
+                    raise                      # bad request / auth — fail fast, clearly
+                if e.code not in _RETRY_STATUS:
+                    break                      # e.g. 404 wrong model → try fallback model
+                if attempt < retries - 1:
+                    # exponential backoff (1.5, 3, 6, …s) with a little jitter
+                    time.sleep(base_delay * (2 ** attempt) + 0.3 * attempt)
+            except (urllib.error.URLError, TimeoutError) as e:
+                last_err = e                   # network blip — retry too
+                if attempt < retries - 1:
+                    time.sleep(base_delay * (2 ** attempt))
+        # this model exhausted its retries → try the fallback model next
+    raise RuntimeError(f"Gemini 連續過載/失敗（已重試 {retries} 次 × {len(models)} 個模型）：{last_err}")
 
 
 def call_openai_compatible(prompt: str, *, base_url: str, api_key: str = "",

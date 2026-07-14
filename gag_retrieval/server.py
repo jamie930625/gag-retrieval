@@ -188,7 +188,11 @@ def api_judge(q: dict) -> dict:
     try:
         raw, parsed = jd.run_judge(prompt, "gemini")
     except Exception as e:
-        return {"error": f"Gemini 呼叫失敗：{e}"}
+        msg = str(e)
+        if "過載" in msg or "503" in msg or "429" in msg:
+            msg = ("Gemini 免費層暫時過載（已自動重試多次仍失敗）。"
+                   "請幾秒後再按一次；連續多首時把速度放慢一點即可。")
+        return {"error": f"Stage-2 裁判呼叫失敗：{msg}"}
     if not parsed:
         return {"error": "回覆解析失敗", "raw": (raw or "")[:1000]}
     # resolve times/song ids so the UI can wire ▶ buttons
