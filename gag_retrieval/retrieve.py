@@ -5,15 +5,16 @@ Stage 1's job is RECALL + rough ordering; taste lives in stage 2. The rough
 ordering follows ONE principle: a shared word only ranks if it is an IDENTITY
 WORD of one of the songs —
 
-    strength   = identity(anchor)            歌名詞 1.0 > hook詞 0.6 > 一般詞 0.3
-                 × mild length factor        (2字 0.9 ... 4字+ 1.0)
+    strength   = identity(anchor)            title word 1.0 > hook word 0.6
+                                             > ordinary word 0.3
+                 × mild length factor        (2 chars 0.9 ... 4+ chars 1.0)
                  × position bonus            anchor at A's line END (last thing
                                              heard) / B's line edge
-                 + near-duplicate bonus      同句反轉 shape
+                 + near-duplicate bonus      same-line-reversed shape
     pair_score = strength × recognizability(B line) × popularity(B)
 
-「愛你」(B's title, line-final both sides) must outrank 「这一刻」 (nobody's
-identity) regardless of anchor length — that inversion was the v1 bug.
+"ai ni" (love you; B's title, line-final both sides) must outrank "zhe yi ke"
+(this moment; nobody's identity) regardless of anchor length — that inversion was the v1 bug.
 """
 
 from __future__ import annotations
@@ -31,10 +32,10 @@ class Evidence:
     a_time: float
     b_text: str
     b_time: float
-    b_label: str              # 歌名句/副歌句/重複句/首句/一般句
+    b_label: str              # title / chorus / repeated / opening / ordinary line
     b_is_title: bool          # matched B's title pseudo-line (not a lyric line)
     anchor: str               # the shared word this pair is scored on
-    anchor_label: str         # A/B歌名詞 | A/Bhook詞 | 一般詞 | 同句反轉
+    anchor_label: str         # A/B title word | A/B hook word | ordinary word | same line reversed
     anchors: list[str]        # all shared anchors (evidence for the judge)
     strength: float
     recog: float
@@ -42,8 +43,8 @@ class Evidence:
     channel: str = "lexical"
     a_sat: int = 1            # times A sings the anchor over the WHOLE song
     a_spread: int = 1         # DISTINCT A lines containing the anchor — the
-                              # saturated-MEANING signal (飞 woven through 9
-                              # lines is A's theme; 快乐 looped in 1 line isn't)
+                              # saturated-MEANING signal ("fly" woven through 9
+                              # lines is A's theme; "happy" looped in 1 line isn't)
 
 
 @dataclass
@@ -53,21 +54,22 @@ class SongResult:
     evidence: list[Evidence] = field(default_factory=list)   # best first
 
 
-# Calibrated on real junk vs real gold: 「面前/在上/近我」 fragments land at
-# ~0.08-0.10 (kill), while a plain-word gem like 「愿意」 lands at ~0.14 (must
-# reach the judge). Ranking cannot tell 我说 from 愿意 — only the judge can.
+# Calibrated on real junk vs real gold: fragments like "in front" / "on top" /
+# "near me" land at ~0.08-0.10 (kill), while a plain-word gem like "yuanyi"
+# (willing) lands at ~0.14 (must reach the judge). Ranking cannot tell "I say"
+# from "willing" — only the judge can.
 MIN_PAIR = 0.12   # pairs below this are noise — never shown, never judged
 MIN_SONG = 0.15   # a candidate song needs at least one pair this strong
 
 
 def _length_factor(span: str) -> float:
-    return min(1.0, 0.85 + 0.05 * (len(span) - 2))           # 2字0.85, 5字+1.0
+    return min(1.0, 0.85 + 0.05 * (len(span) - 2))           # 2 chars 0.85, 5+ chars 1.0
 
 
 def _position_bonus(anchor: str, ca: str, cb: str) -> float:
     """Timing physics of a live gag: the echo must land the INSTANT B enters.
-    Anchor within B's first 3 chars = instant payoff (「分手快乐」 counts —
-    the crowd hears 快乐 within a second). Anchor at A's line end = freshest
+    Anchor within B's first 3 chars = instant payoff ("breakup happy" counts —
+    the crowd hears "happy" within a second). Anchor at A's line end = freshest
     in the ear. Both = true anadiplosis. Anchor buried at B's line END = the
     echo arrives 8 words late (near zero)."""
     ia, ib = ca.rfind(anchor), cb.find(anchor)
@@ -94,9 +96,10 @@ def _score_anchors(norm_a: str, norm_b: str, song_a: Song,
             s = ident * _length_factor(span) * _position_bonus(span, ca, cb)
             if s > best:
                 best, b_anchor, b_label = s, span, label
-    # 頂真接龍: B's first char echoes A's tail WORD (「…说爱你」→「爱就是有我
-    # 常烦着你」). A single char is only PERCEIVABLE when it is a TITLE-grade
-    # identity char (爱 ⊆《愛你》, 飛 ⊆《我要飛》) — generic chars (心/会/表)
+    # Anadiplosis chain: B's first char echoes A's tail WORD ("…say I love you"
+    # → "love is me always bothering you"). A single char is only PERCEIVABLE
+    # when it is a TITLE-grade identity char ("love" ⊆ "Love You", "fly" ⊆
+    # "I Want to Fly") — generic chars ("heart" / "will" / "show")
     # flood the ranks with echoes no crowd would ever register.
     head = cb[0] if cb else ""
     if head and not head.isascii() and head not in _STOP_CHARS \
@@ -110,7 +113,7 @@ def _score_anchors(norm_a: str, norm_b: str, song_a: Song,
             if head not in anchors_all:
                 anchors_all.append(head)
     if m and m.near_dup > 0:
-        nd = 0.5 + 0.5 * m.near_dup                 # 反轉句自身就是強對應
+        nd = 0.5 + 0.5 * m.near_dup                 # a reversed line is a strong match by itself
         if nd > best:
             best, b_anchor = nd, (b_anchor or "(近乎同句)")
             b_label = "同句反轉"
@@ -158,8 +161,8 @@ def retrieve(query: Song, index: LexicalIndex, *, topk_songs: int = 10,
                 recog, label = 1.0, "歌名"
                 b_text, b_time, b_is_title = f"《{song_b.title}》(歌名)", 0.0, True
             # the gag needs BOTH ends heard — but LRC repetition is a weak
-            # proxy for A-side fame (宣誓句 sung once is still iconic), so
-            # this factor stays GENTLE or it buries gold like 「愿意」.
+            # proxy for A-side fame (a vow line sung once is still iconic), so
+            # this factor stays GENTLE or it buries gold like "yuanyi" (willing).
             lg_a = query.line_by_norm(a_norm)
             recog_a = recognizability(query, lg_a)[0] if lg_a else 1.0
             # saturated-MEANING factor: what matters is the anchor being WOVEN

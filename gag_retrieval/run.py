@@ -1,7 +1,7 @@
-"""CLI — run the two-stage 字面對應 next-song retrieval.
+"""CLI — run the two-stage lexical-correspondence next-song retrieval.
 
-    python3 -m gag_retrieval.run --corpus lrc_test --query 偷偷
-    python3 -m gag_retrieval.run --corpus lrc_test --query 偷偷 --llm gemini
+    python3 -m gag_retrieval.run --corpus lrc_test --query <song>
+    python3 -m gag_retrieval.run --corpus lrc_test --query <song> --llm gemini
     python3 -m gag_retrieval.run --corpus lrc_test --all          # every song
 
 Stage-1 ranking always prints; --llm picks the stage-2 backend (default

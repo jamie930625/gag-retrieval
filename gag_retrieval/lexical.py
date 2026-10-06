@@ -1,17 +1,18 @@
 """Lexical channel — character-bigram inverted index + anchor extraction.
 
-"字面上對應" is a string property, so this channel is the DEFINITION of the
+"Lexical correspondence" is a string property, so this channel is the DEFINITION of the
 task, not an approximation of it. The inverted index makes query cost depend on
 posting-list sizes, not corpus size — the same structure scales from 6 songs to
 a search-engine-sized catalog (swap the dict for Elasticsearch/Tantivy).
 
 An ANCHOR is a contiguous word both lines share, cleanly aligned to word
-boundaries: no grammatical particle inside (kills 「的看」「偷偷的」— the
-clean core 「偷偷」 survives as its own anchor) and at least one content
-character (kills pure pronoun glue 「我的」「你是」).
+boundaries: no grammatical particle inside (kills "de kan" (of-look) and
+"toutou de" (secretly-of) — the clean core "toutou" (secretly) survives as its
+own anchor) and at least one content character (kills pure pronoun glue
+"wo de" (my), "ni shi" (you are)).
 
 Anchor extraction here is deliberately identity-blind: WHICH anchor matters
-(歌名詞 > hook詞 > 一般詞) needs song context and lives in retrieve.py. This
+(title word > hook word > ordinary word) needs song context and lives in retrieve.py. This
 module only answers "what clean words do these two lines share".
 """
 
@@ -21,26 +22,27 @@ from dataclasses import dataclass
 
 from .lrc import Song
 
-# Grammatical particles: an anchor may not CONTAIN any of these ("的看" is a
+# Grammatical particles: an anchor may not CONTAIN any of these ("de kan" is a
 # segmentation artifact, never a word).
 _PARTICLES = set("的了着著吧啊呢吗嗎嘛么麼哦喔哟喲耶欸唉哎啦呀嘿哈之乎者矣焉哉")
 
 # Function characters (pronouns/copulas/etc.): an anchor made ONLY of these has
-# no content — 「愛你」 stands (愛 is content), 「我你」「就是」「给我」 do not.
+# no content — "ai ni" (love you) stands ("ai" is content), "wo ni" (I you),
+# "jiu shi" (just is), "gei wo" (give me) do not.
 _STOP_CHARS = _PARTICLES | set("我你他她它您们們这這那哪个個是就也都很再才在有"
                                "和跟与與及而或於于把被向往到从從对對又还還只没沒不给給一能要")
 
 # Weak-semantics words: time/logic/degree scaffolding. Sharing one of these is
-# not a PERCEIVABLE gag (「今天」「一起」— the crowd hears nothing), so they
+# not a PERCEIVABLE gag ("today", "together" — the crowd hears nothing), so they
 # cannot stand ALONE as the anchor; they may still sit inside a longer anchor
-# (「今天你要嫁给」 is fine). Curated — extend as bad examples show up.
+# ("today you will marry" is fine). Curated — extend as bad examples show up.
 _WEAK_ANCHORS = {
     "今天", "明天", "昨天", "现在", "現在", "时候", "時候", "一刻", "此刻",
     "一起", "一样", "一樣", "这样", "這樣", "那样", "那樣", "怎样", "怎樣",
     "过去", "過去", "以后", "以後", "后来", "後來", "可以", "知道", "因为",
     "因為", "所以", "如果", "真的", "已经", "已經", "曾经", "曾經", "一点",
     "一點", "点点", "點點", "总是", "總是", "开始", "開始", "最后", "最後",
-    "一切", "一天", "每天", "刻我",   # 刻我: cross-word fragment 一刻|我
+    "一切", "一天", "每天", "刻我",   # "ke wo": cross-word fragment "yi ke" (moment) | "wo" (I)
     "关于", "關於", "对于", "對於", "然后", "然後", "还有", "還有",
 }
 
@@ -50,7 +52,7 @@ _TAIL_STRIP = set("我你他她它")      # pronouns glued onto a fragment
 
 def _weak(span: str) -> bool:
     """True if the span — or the span minus demonstrative/pronoun glue — is a
-    weak-semantics word (「这一刻我」→ strip 这/我 → 「一刻」→ weak)."""
+    weak-semantics word ("this moment I" → strip "this"/"I" → "moment" → weak)."""
     if span in _WEAK_ANCHORS:
         return True
     core = span
@@ -105,7 +107,8 @@ def find_anchors(norm_a: str, norm_b: str) -> list[str]:
     Enumerates A's valid n-grams (2..MAX_ANCHOR) present in B, then drops any
     that is a substring of a longer kept anchor. The particle rule does the
     word-boundary alignment: a cross-word artifact always carries the particle
-    that glued it together ("偷偷的|看" -> 「的看」 contains 的 -> dead)."""
+    that glued it together ("toutou de | kan" -> "de kan" contains the particle
+    "de" -> dead)."""
     found = set()
     la = len(norm_a)
     for n in range(min(MAX_ANCHOR, la), 1, -1):
@@ -136,7 +139,8 @@ def _levenshtein(a: str, b: str) -> int:
 
 
 def near_dup_ratio(norm_a: str, norm_b: str) -> float:
-    """Whole-line similarity for the 同句反轉 shape (今天你要嫁给我↔明天我要嫁给你)."""
+    """Whole-line similarity for the same-line-reversed shape ("today you will
+    marry me" ↔ "tomorrow I will marry you")."""
     if abs(len(norm_a) - len(norm_b)) > max(3, min(len(norm_a), len(norm_b)) // 2):
         return 0.0
     ratio = 1.0 - _levenshtein(norm_a, norm_b) / max(len(norm_a), len(norm_b))
@@ -178,8 +182,9 @@ class LexicalIndex:
                     self.heads.setdefault(core[0], set()).add((s.song_id, norm))
 
     def candidates(self, query_norm: str, exclude_song: str) -> set[tuple[str, str]]:
-        """Bigram overlap ∪ tail-head continuation (a 頂真接龍 pair like
-        「…说爱你」→「爱就是…」 shares NO bigram — it needs its own channel)."""
+        """Bigram overlap ∪ tail-head continuation (an anadiplosis chain pair
+        like "…say I love you" → "love is…" shares NO bigram — it needs its own
+        channel)."""
         out: set[tuple[str, str]] = set()
         for bg in _bigrams(query_norm):
             for song_id, norm in self.postings.get(bg, ()):

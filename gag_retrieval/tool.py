@@ -18,8 +18,8 @@ is the agent's job.
 Example (per-run, stateless):
     from gag_retrieval.tool import GagCatalog
     cat = GagCatalog("lrc_test")
-    cat.suggest_next_song("我要飛", k=5)
-    cat.lyric_hooks("我要飛", "飛太遠", k=5)
+    cat.suggest_next_song("<song A>", k=5)
+    cat.lyric_hooks("<song A>", "<song B>", k=5)
 """
 
 from __future__ import annotations

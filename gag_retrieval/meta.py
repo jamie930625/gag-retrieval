@@ -1,10 +1,10 @@
-"""Positional metadata (「句子位置學」) — honest feasibility facts per line.
+"""Positional metadata ("line-position science") — honest feasibility facts per line.
 
 The retrieval layer must NOT filter on feasibility; it attaches these facts so
 the agent (or the demo viewer) weighs them itself:
 
     line_end        when this line finishes (next vocal event, capped)
-    section_pos     段首 / 段中 / 段尾 — position within its lyric section
+    section_pos     section start / middle / end — position within its lyric section
                     (sections split on >=4s vocal gaps: verse/chorus breaks)
     to_section_end  seconds until the section ends (natural exit points)
     runway          seconds of song remaining after this line (entering B on a

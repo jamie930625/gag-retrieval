@@ -2,20 +2,20 @@
 functional but not yet wired into the demo; enable per-song when LRC times
 prove inaccurate.)
 
-Principle: Whisper's TEXT is unreliable on sung Mandarin (「嫁給我」→「駕給我」
-kills a lexical gag) but its TIMELINE is roughly right; scraped official lyrics
+Principle: Whisper's TEXT is unreliable on sung Mandarin (hearing "marry me"
+as a homophone that means "drive me" kills a lexical gag) but its TIMELINE is roughly right; scraped official lyrics
 are the reverse. So align the two character streams and transfer times onto the
 official lines — ASR misheard characters still occupy the right slots, so the
 mapping survives them.
 
 Input Whisper JSON (produced by whisper/faster-whisper/the project's stems
 server; both shapes accepted):
-    {"words": [{"word": "嫁", "start": 81.2, "end": 81.4}, ...]}
+    {"words": [{"word": "<char>", "start": 81.2, "end": 81.4}, ...]}
     {"segments": [{"words": [...]}, ...]}          # openai-whisper default
 
 Usage:
-    python3 -m gag_retrieval.align --lrc lrc_test/偷偷.txt \
-        --whisper 偷偷.whisper.json --out lrc_test/偷偷.aligned.txt
+    python3 -m gag_retrieval.align --lrc lrc_test/<song>.txt \
+        --whisper <song>.whisper.json --out lrc_test/<song>.aligned.txt
 The output is a normal LRC txt (same format the corpus loader reads) with
 refined line times, plus a per-line delta report on stdout.
 """

@@ -84,7 +84,7 @@ class App:
     def _map_audio(self) -> dict[str, Path]:
         """Fuzzy-match messy audio filenames to songs: the song whose normalized
         title appears in the normalized filename wins; longest title first so
-        《說愛你》 claims its file before 《愛你》 can."""
+        "Say Love You" claims its file before "Love You" can."""
         files = [f for f in self.corpus_dir.iterdir()
                  if f.suffix.lower() in AUDIO_EXTS]
         out: dict[str, Path] = {}
@@ -152,10 +152,11 @@ def _parse_mmss(s: str) -> float | None:
 
 
 def _resolve_song(name: str) -> str | None:
-    """Map the judge's `next_song` (may carry 《》/spacing) to a corpus id.
+    """Map the judge's `next_song` (may carry title brackets/spacing) to a corpus id.
 
     EXACT title match wins first; only then substring matches, longest title
-    first — otherwise 《愛你》 hijacks 《說愛你》 ("爱你" ⊆ "说爱你") and the
+    first — otherwise "Love You" hijacks "Say Love You" ("love you" ⊆ "say
+    love you") and the
     mix preview plays the wrong song's audio."""
     n = normalize(str(name or ""))
     if not n:

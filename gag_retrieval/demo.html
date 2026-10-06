@@ -190,7 +190,7 @@ function mark(btn) {
   curBtn = btn; if (btn) btn.classList.add("on");
 }
 /* audio = LRC time + per-song offset (YouTube rips often carry extra intro;
-   calibrate via the 校準 button, saved server-side to offsets.json) */
+   calibrate via the "Calibrate" (jiaozhun) button, saved server-side to offsets.json) */
 let OFFSETS = {};
 function off(song) { return OFFSETS[song] || 0; }
 

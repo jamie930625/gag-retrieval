@@ -1,7 +1,8 @@
 """Line recognizability — the ranking key that makes the gag LAND.
 
 A lexical match only works live if the audience instantly recognizes the
-incoming line ("分手快樂 祝你快樂" — everyone knows it by beat one). All four
+incoming line ("happy breakup, I wish you happiness" — everyone knows it by
+beat one). All four
 golden examples land on the B-song's most iconic line, so recognizability is
 the primary sort key among equally-matching candidates:
 
@@ -45,8 +46,9 @@ def recognizability(song: Song, lg: LineGroup) -> tuple[float, str]:
 # Anchor identity — is this shared word an IDENTITY WORD of the song?
 #
 # The user's golden examples all anchor on a word that IS one song's identity
-# (「愛你」=B's title, 「快樂」⊂《分手快樂》, 「想飛」= A's repeated hook),
-# while junk anchors (「这一刻」「什么」) are nobody's identity. This is the
+# ("love you" = B's title, "happy" ⊂ "Happy Breakup", "want to fly" = A's
+# repeated hook), while junk anchors ("this moment", "what") are nobody's
+# identity. This is the
 # primary rank signal — anchor LENGTH is deliberately secondary.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -69,17 +71,18 @@ def _song_tf(song: Song, span: str) -> int:
 
 
 def _song_spread(song: Song, span: str) -> int:
-    """How many DISTINCT lines contain the span — the theme signal. 「飞」woven
-    through 9 different lines of 我要飛 is the song's MEANING; 「快乐」looped
-    3x inside one single line of 偷偷 is just a passing word."""
+    """How many DISTINCT lines contain the span — the theme signal. "fly" woven
+    through 9 different lines of "I Want to Fly" is the song's MEANING; "happy"
+    looped 3x inside one single line of "Secretly" is just a passing word."""
     return sum(1 for norm, _ in _song_lines(song) if span in norm)
 
 
 def _title_grade(span: str, title_norm: str) -> bool:
-    """Substring alone is too loose for LONG titles: 「给我」⊆《今天你要嫁给我》
-    is a corner, not the identity. Require the anchor to cover >=1/3 of the
-    title's CONTENT characters (「爱你」covers 爱 = 1/2 of 说爱[你] -> yes;
-    「给我」covers 给 = 1/5 of 今天要嫁给 -> no, falls through to hook/plain)."""
+    """Substring alone is too loose for LONG titles: "give me" ⊆ "Marry Me
+    Today" is a corner, not the identity. Require the anchor to cover >=1/3 of
+    the title's CONTENT characters ("love you" covers "love" = 1/2 of the
+    content chars of "Say Love You" -> yes; "give me" covers "give" = 1/5 of
+    the content chars of "Marry Me Today" -> no, falls through to hook/plain)."""
     from .lexical import _STOP_CHARS
     if not title_norm or len(title_norm) < 2:
         return False
@@ -107,7 +110,7 @@ def identity_weight(span: str, song_a: Song, song_b: Song) -> tuple[float, str]:
 def theme_profile(song: Song, k: int = 6) -> list[tuple[str, int, int]]:
     """The song's saturated meanings: top (word, spread, tf) by how widely the
     word is WOVEN through distinct lines. This is what the crowd's ear retains
-    — fed to the judge so it can match SEMANTIC fields (飞↔翅膀/云端), not
+    — fed to the judge so it can match SEMANTIC fields (fly ↔ wings/clouds), not
     just repeated strings."""
     from .lexical import _STOP_CHARS, _valid_anchor
     stats: dict[str, list[int]] = {}       # word -> [spread, tf]
@@ -128,7 +131,7 @@ def theme_profile(song: Song, k: int = 6) -> list[tuple[str, int, int]]:
             st[1] += core.count(g) * reps
     cands = [(g, s, t) for g, (s, t) in stats.items() if s >= 2]
     cands.sort(key=lambda x: (-x[1], -x[2], -len(x[0])))
-    # drop substrings of an already-kept equal-or-wider word (要飞 ⊂ 我要飞)
+    # drop substrings of an already-kept equal-or-wider word ("want to fly" ⊂ "I want to fly")
     keep: list[tuple[str, int, int]] = []
     for g, s, t in cands:
         if not any(g in kg and ks >= s for kg, ks, _ in keep):

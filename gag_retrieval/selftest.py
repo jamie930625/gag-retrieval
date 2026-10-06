@@ -4,7 +4,7 @@
 
 Part 1 — anchor extraction (word-boundary + content rules) on the four target
 correspondence shapes and the known noise shapes.
-Part 2 — identity ranking: 「愛你」(title word) must outrank 「这一刻」
+Part 2 — identity ranking: "love you" (title word) must outrank "this moment"
 (nobody's identity word) — the v1 inversion bug.
 """
 
@@ -109,7 +109,7 @@ def main():
           f"-> {scored[:3] if scored else None}")
     scored2 = _score_anchors(normalize("安慰她保护着她"),
                              normalize("她们都不懂"), shuo, aini)
-    ok2 = scored2 is None or scored2[0] < 0.3       # 她 is a stop char — no 接龍
+    ok2 = scored2 is None or scored2[0] < 0.3       # "she" is a stop char — no chained echo
     failures += (not ok2)
     print(f"  {'PASS' if ok2 else 'FAIL'}  尾字是代詞（她）不觸發接龍 "
           f"-> {scored2[:3] if scored2 else None}")

@@ -18,7 +18,7 @@ from pathlib import Path
 from .zhnorm import normalize
 
 _TIME_RE = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\]")
-# Credit/metadata rows ("作词：...", "混音 : ..."), not lyrics.
+# Credit/metadata rows ("Lyricist: ...", "Mixing : ..."), not lyrics.
 _META_RE = re.compile(
     r"^\s*(?:作词|作詞|作曲|编曲|編曲|监制|監製|制作|製作|出品|发行|發行|词|曲|"
     r"和声|和聲|吉他|贝斯|贝司|键盘|鍵盤|鼓|弦乐|弦樂|录音|錄音|混音|母带|母帶|"
@@ -68,7 +68,7 @@ def parse_song(path: str | Path) -> Song:
         if order == 0 and " - " in text:
             continue
         norm = normalize(text)
-        if len(norm) < 2:      # "Oh", "耶" — nothing to match on
+        if len(norm) < 2:      # "Oh", "Ye" — nothing to match on
             continue
         times = [int(m) * 60 + float(s) for m, s in tags] or [0.0]
         if norm in groups:

@@ -1,6 +1,6 @@
 """Optional semantic channel (dense line embeddings).
 
-Catches the small slice lexical matching can't ("嫁給我" ↔ "娶你回家") — a
+Catches the small slice lexical matching can't ("marry me" ↔ "take you home as my bride") — a
 SUPPLEMENT, never the main channel. Requires sentence-transformers with a
 multilingual model; when unavailable the channel silently reports disabled and
 stage 1 runs lexical-only (all four golden examples are lexical).
